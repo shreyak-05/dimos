@@ -48,6 +48,9 @@ from dimos.core.module import ModuleConfig
 from dimos.hardware.drive_trains.spec import (
     TwistBaseAdapter,
 )
+from dimos.hardware.manipulators.spec import (
+    ManipulatorAdapter,
+)
 from dimos.msgs.geometry_msgs import (
     PoseStamped,  # noqa: TC001 - needed at runtime for In[PoseStamped]
     Twist,  # noqa: TC001 - needed at runtime for In[Twist]
@@ -63,8 +66,6 @@ from dimos.utils.logging_config import setup_logger
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
-
-    from dimos.hardware.manipulators.spec import ManipulatorAdapter
 
 logger = setup_logger()
 
@@ -613,7 +614,10 @@ class ControlCoordinator(Module[ControlCoordinatorConfig]):
             if isinstance(hw, ConnectedTwistBase):
                 logger.warning(f"Hardware '{hardware_id}' is a twist base, no gripper support")
                 return False
-            return hw.adapter.write_gripper_position(position)
+            adapter = hw.adapter
+            if not isinstance(adapter, ManipulatorAdapter):
+                return False
+            return adapter.write_gripper_position(position)
 
     @rpc
     def get_gripper_position(self, hardware_id: str) -> float | None:
@@ -628,7 +632,10 @@ class ControlCoordinator(Module[ControlCoordinatorConfig]):
                 return None
             if isinstance(hw, ConnectedTwistBase):
                 return None
-            return hw.adapter.read_gripper_position()
+            adapter = hw.adapter
+            if not isinstance(adapter, ManipulatorAdapter):
+                return None
+            return adapter.read_gripper_position()
 
     # =========================================================================
     # Lifecycle
