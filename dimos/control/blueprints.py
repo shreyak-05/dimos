@@ -47,6 +47,7 @@ from dimos.utils.data import LfsPath
 _PIPER_MODEL_PATH = LfsPath("piper_description/mujoco_model/piper_no_gripper_description.xml")
 _XARM6_MODEL_PATH = LfsPath("xarm_description/urdf/xarm6/xarm6.urdf")
 _XARM7_MODEL_PATH = LfsPath("xarm_description/urdf/xarm7/xarm7.urdf")
+_ZARM_MODEL_PATH = LfsPath("zarm_description/urdf/zarm.urdf")
 
 
 # =============================================================================
@@ -551,6 +552,110 @@ coordinator_teleop_piper = control_coordinator(
     }
 )
 
+# ZArm (Fairino 6-DOF) basic trajectory blueprint
+coordinator_zarm = control_coordinator(
+    tick_rate=100.0,
+    publish_joint_state=True,
+    joint_state_frame_id="coordinator",
+    hardware=[
+        HardwareComponent(
+            hardware_id="arm",
+            hardware_type=HardwareType.MANIPULATOR,
+            joints=make_joints("arm", 6),
+            adapter_type="zarm",
+            address="192.168.58.2",
+            auto_enable=True,
+        ),
+    ],
+    tasks=[
+        TaskConfig(
+            name="traj_arm",
+            type="trajectory",
+            joint_names=[f"arm_joint{i + 1}" for i in range(6)],
+            priority=10,
+        ),
+    ],
+).transports(
+    {
+        ("joint_state", JointState): LCMTransport("/coordinator/joint_state", JointState),
+    }
+)
+
+# ZArm with TeleopIK for Quest 3 (right controller)
+coordinator_teleop_zarm = control_coordinator(
+    tick_rate=100.0,
+    publish_joint_state=True,
+    joint_state_frame_id="coordinator",
+    hardware=[
+        HardwareComponent(
+            hardware_id="arm",
+            hardware_type=HardwareType.MANIPULATOR,
+            joints=make_joints("arm", 6),
+            adapter_type="zarm",
+            address="192.168.58.2",
+            auto_enable=True,
+        ),
+    ],
+    tasks=[
+        TaskConfig(
+            name="teleop_zarm",
+            type="teleop_ik",
+            joint_names=[f"arm_joint{i + 1}" for i in range(6)],
+            priority=10,
+            model_path=_ZARM_MODEL_PATH,
+            ee_joint_id=6,
+            hand="right",
+            max_joint_delta_deg=2.0,  # conservative: ~200°/s max with realhand attached
+        ),
+    ],
+).transports(
+    {
+        ("joint_state", JointState): LCMTransport("/coordinator/joint_state", JointState),
+        ("cartesian_command", PoseStamped): LCMTransport(
+            "/coordinator/cartesian_command", PoseStamped
+        ),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+# Mock variant — same as coordinator_teleop_zarm but uses mock adapter (no hardware/fairino needed)
+coordinator_teleop_zarm_mock = control_coordinator(
+    tick_rate=100.0,
+    publish_joint_state=True,
+    joint_state_frame_id="coordinator",
+    hardware=[
+        HardwareComponent(
+            hardware_id="arm",
+            hardware_type=HardwareType.MANIPULATOR,
+            joints=make_joints("arm", 6),
+            adapter_type="mock",
+            address="",
+            auto_enable=True,
+        ),
+    ],
+    tasks=[
+        TaskConfig(
+            name="teleop_zarm",
+            type="teleop_ik",
+            joint_names=[f"arm_joint{i + 1}" for i in range(6)],
+            priority=10,
+            model_path=_ZARM_MODEL_PATH,
+            ee_joint_id=6,
+            hand="right",
+            max_joint_delta_deg=2.0,
+        ),
+    ],
+).transports(
+    {
+        ("joint_state", JointState): LCMTransport("/coordinator/joint_state", JointState),
+        ("cartesian_command", PoseStamped): LCMTransport(
+            "/coordinator/cartesian_command", PoseStamped
+        ),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+
 # Dual arm teleop: XArm6 + Piper with TeleopIK
 coordinator_teleop_dual = control_coordinator(
     tick_rate=100.0,
@@ -722,7 +827,10 @@ __all__ = [
     "coordinator_teleop_piper",
     "coordinator_teleop_xarm6",
     "coordinator_teleop_xarm7",
+    "coordinator_teleop_zarm",
+    "coordinator_teleop_zarm_mock",
     "coordinator_velocity_xarm6",
     "coordinator_xarm6",
     "coordinator_xarm7",
+    "coordinator_zarm",
 ]

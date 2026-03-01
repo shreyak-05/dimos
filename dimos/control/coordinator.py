@@ -102,6 +102,7 @@ class TaskConfig:
     gripper_joint: str | None = None
     gripper_open_pos: float = 0.0
     gripper_closed_pos: float = 0.0
+    max_joint_delta_deg: float = 5.0  # teleop_ik only: max joint change per tick (safety)
 
 
 @dataclass
@@ -338,6 +339,7 @@ class ControlCoordinator(Module[ControlCoordinatorConfig]):
                     gripper_joint=cfg.gripper_joint,
                     gripper_open_pos=cfg.gripper_open_pos,
                     gripper_closed_pos=cfg.gripper_closed_pos,
+                    max_joint_delta_deg=cfg.max_joint_delta_deg,
                 ),
             )
 

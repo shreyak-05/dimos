@@ -172,6 +172,7 @@ manipulation = [
     "drake>=1.40.0; sys_platform != 'darwin' and platform_machine != 'aarch64'",
 
     # Hardware SDKs
+    "fairino",                    # ZArm (Fairino) hardware SDK
     "piper-sdk",
     "xarm-python-sdk>=1.17.0",
 

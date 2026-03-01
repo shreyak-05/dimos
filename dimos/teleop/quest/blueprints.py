@@ -19,11 +19,17 @@ from dimos.control.blueprints import (
     coordinator_teleop_dual,
     coordinator_teleop_piper,
     coordinator_teleop_xarm7,
+    coordinator_teleop_zarm,
+    coordinator_teleop_zarm_mock,
 )
+from dimos.visualization.rerun.bridge import rerun_bridge
 from dimos.core.blueprints import autoconnect
 from dimos.core.transport import LCMTransport
 from dimos.msgs.geometry_msgs import PoseStamped
-from dimos.teleop.quest.quest_extensions import arm_teleop_module, visualizing_teleop_module
+from dimos.teleop.quest.quest_extensions import (
+    arm_teleop_module,
+    visualizing_teleop_module,
+)
 from dimos.teleop.quest.quest_types import Buttons
 
 # -----------------------------------------------------------------------------
@@ -105,10 +111,58 @@ arm_teleop_dual = autoconnect(
 )
 
 
+# Single ZArm teleop: right controller -> zarm
+# Usage: dimos run arm-teleop-zarm
+arm_teleop_zarm = autoconnect(
+    arm_teleop_module(task_names={"right": "teleop_zarm"}),
+    coordinator_teleop_zarm,
+).transports(
+    {
+        ("right_controller_output", PoseStamped): LCMTransport(
+            "/coordinator/cartesian_command", PoseStamped
+        ),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+# ZArm teleop with Rerun visualization of controller pose + button states
+# Usage: dimos run arm-teleop-zarm-visualizing
+arm_teleop_zarm_visualizing = autoconnect(
+    visualizing_teleop_module(task_names={"right": "teleop_zarm"}),
+    coordinator_teleop_zarm,
+).transports(
+    {
+        ("right_controller_output", PoseStamped): LCMTransport(
+            "/coordinator/cartesian_command", PoseStamped
+        ),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+# ZArm mock + Rerun visualization (no hardware needed — for pre-hardware testing)
+# Includes the rerun-bridge so joint states + controller poses all appear in one Rerun viewer.
+# Usage: dimos run arm-teleop-zarm-visualizing-mock
+arm_teleop_zarm_visualizing_mock = autoconnect(
+    visualizing_teleop_module(task_names={"right": "teleop_zarm"}),
+    coordinator_teleop_zarm_mock,
+    rerun_bridge(),
+).transports(
+    {
+        ("right_controller_output", PoseStamped): LCMTransport(
+            "/coordinator/cartesian_command", PoseStamped
+        ),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+
 __all__ = [
     "arm_teleop",
     "arm_teleop_dual",
     "arm_teleop_piper",
     "arm_teleop_visualizing",
     "arm_teleop_xarm7",
+    "arm_teleop_zarm",
+    "arm_teleop_zarm_visualizing",
+    "arm_teleop_zarm_visualizing_mock",
 ]

@@ -14,8 +14,9 @@
 
 from __future__ import annotations
 
+import math
 import time
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 from dimos_lcm.sensor_msgs import JointState as LCMJointState
 from plum import dispatch
@@ -122,6 +123,41 @@ class JointState(Timestamped):
             velocity=list(lcm_msg.velocity) if lcm_msg.velocity else [],
             effort=list(lcm_msg.effort) if lcm_msg.effort else [],
         )
+
+    def to_rerun(self) -> list[tuple[str, Any]]:
+        """Convert to Rerun scalar time series, one series per joint per field.
+
+        Returns RerunMulti so the bridge logs each joint independently:
+            joints/{name}/position_deg   — always logged
+            joints/{name}/velocity_deg_s — logged when any velocity is non-zero
+            joints/{name}/effort_nm      — logged when any effort is non-zero
+
+        Entity paths use degrees for readability in the Rerun timeline panel.
+        """
+        import rerun as rr  # lazy import — rerun is an optional dep
+
+        has_velocity = any(v != 0.0 for v in self.velocity)
+        has_effort = any(e != 0.0 for e in self.effort)
+
+        entries: list[tuple[str, Any]] = []
+        for i, name in enumerate(self.name):
+            if i < len(self.position):
+                entries.append((
+                    f"joints/{name}/position_deg",
+                    rr.Scalars(math.degrees(self.position[i])),
+                ))
+            if has_velocity and i < len(self.velocity):
+                entries.append((
+                    f"joints/{name}/velocity_deg_s",
+                    rr.Scalars(math.degrees(self.velocity[i])),
+                ))
+            if has_effort and i < len(self.effort):
+                entries.append((
+                    f"joints/{name}/effort_nm",
+                    rr.Scalars(self.effort[i]),
+                ))
+
+        return entries
 
     def __str__(self) -> str:
         return f"JointState({len(self.name)} joints, frame_id='{self.frame_id}')"
