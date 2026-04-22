@@ -1,75 +1,45 @@
 # XArm7 + RealHand L6 Quest Teleop
 
-Fork-only addition on branch `teleop-xarm-realhand`. Adds Meta Quest VR
-teleoperation for a UFactory XArm7 arm and a LinkerHand RealHand L6 hand,
-wired through the existing dimos control coordinator / blueprints.
+Fork of [`dimensionalOS/dimos`](https://github.com/dimensionalOS/dimos) that
+adds Meta Quest VR teleoperation for a UFactory XArm7 arm and a LinkerHand
+RealHand L6 hand, wired through the existing dimos control coordinator /
+blueprints. Everything lives on branch `teleop-xarm-realhand`.
+
+These instructions assume a clean machine with **no existing dimos clone**.
 
 ---
 
-## Installation
+## 1. System dependencies (one-time per machine)
 
-### 1. Get the code
+Installs LCM, build tools, CUDA if applicable. Use the upstream dimos
+one-shot installer:
 
-Pick whichever of the three scenarios matches your machine.
+```bash
+curl -fsSL https://raw.githubusercontent.com/dimensionalOS/dimos/main/scripts/install.sh | bash
+```
 
-**a) You do NOT already have a `dimos` clone on this machine** — straight clone:
+Or follow the OS-specific guide manually — after the clone step below you'll
+find them at `docs/installation/{ubuntu,nix,osx}.md`.
+
+## 2. Clone this fork
 
 ```bash
 git clone -b teleop-xarm-realhand https://github.com/shreyak-05/dimos.git
 cd dimos
 ```
 
-**b) The folder `dimos` already exists where you're cloning** (you'll get
-`fatal: destination path 'dimos' already exists`) — clone into a different
-folder name:
-
-```bash
-git clone -b teleop-xarm-realhand https://github.com/shreyak-05/dimos.git dimos-teleop
-cd dimos-teleop
-```
-
-**c) You already have an upstream `dimensionalOS/dimos` clone and want to add
-this branch to it** — add the fork as a second remote and check out the branch
-from there:
-
-```bash
-cd path/to/your/existing/dimos
-git remote -v                                    # verify origin = dimensionalOS/dimos
-git remote add fork https://github.com/shreyak-05/dimos.git
-git fetch fork teleop-xarm-realhand
-git checkout -b teleop-xarm-realhand fork/teleop-xarm-realhand
-```
-
-> Note: `git branch -b ...` is **not** a valid command. To switch onto a branch
-> use `git checkout` or `git switch`. `-b` is a flag for `git checkout -b` /
-> `git switch -c` (meaning "create and switch"), not for `git branch`.
-
-Confirm you're on the right branch and the teleop files exist:
+`-b teleop-xarm-realhand` checks out the branch that contains the teleop code.
+Verify:
 
 ```bash
 git status                                       # "On branch teleop-xarm-realhand"
 ls TELEOP.md examples/teleop_xarm7_realhand.py   # both should exist
 ```
 
-### 2. System dependencies (one-time per machine)
-
-Follow the upstream dimos system install for your OS (installs LCM, build
-tools, CUDA if applicable):
-
-- Ubuntu 22.04 / 24.04: [`docs/installation/ubuntu.md`](docs/installation/ubuntu.md)
-- NixOS / other Linux: [`docs/installation/nix.md`](docs/installation/nix.md)
-- macOS: [`docs/installation/osx.md`](docs/installation/osx.md)
-
-Or the one-shot interactive installer:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/dimensionalOS/dimos/main/scripts/install.sh | bash
-```
-
-### 3. Python environment (editable install from source)
+## 3. Python environment (editable install from source)
 
 PyPI's `dimos` package does **not** include these teleop files, so install the
-cloned fork in editable mode:
+clone in editable mode:
 
 ```bash
 uv venv --python "3.12"
@@ -80,18 +50,18 @@ uv pip install -e '.[base,manipulation]'
 `manipulation` pulls `xarm-python-sdk` and Drake for IK. If `uv` is missing:
 `pip install uv`.
 
-### 4. RealHand L6 SDK (not in pyproject extras)
+## 4. RealHand L6 SDK (not in pyproject extras)
 
 ```bash
 uv pip install linkerbot-py
 ```
 
-### 5. CAN bus for the hand
+## 5. CAN bus for the hand
 
 The RealHand L6 talks over CAN — typically `can0` at 1 Mbps via a PCAN-USB
 adapter.
 
-**Plug in the PCAN-USB adapter**, then check the kernel sees it:
+Plug in the PCAN-USB adapter, then check the kernel sees it:
 
 ```bash
 ip -br link show | grep can      # should list can0
@@ -101,7 +71,7 @@ lsusb | grep -i peak             # should show the PEAK-System adapter
 If `can0` is missing, load the driver:
 
 ```bash
-sudo modprobe peak_usb            # for PCAN-USB
+sudo modprobe peak_usb
 ```
 
 Bring the interface up at 1 Mbps (needed once per boot):
@@ -121,7 +91,7 @@ Physical hand side (defaults to `left`):
 export REALHAND_SIDE=left   # or "right"
 ```
 
-### 6. XArm7 (skip if running hand-only)
+## 6. XArm7 (skip if running hand-only)
 
 Set the arm IP (or edit `dimos/control/blueprints/_hardware.py`):
 
@@ -129,13 +99,12 @@ Set the arm IP (or edit `dimos/control/blueprints/_hardware.py`):
 export XARM7_IP=192.168.1.xxx
 ```
 
-### 7. Meta Quest
+## 7. Meta Quest
 
-Run the dimos Quest receiver (ships with the upstream Quest module — the
-example starts it for you via `teleop_quest_xarm7` / `teleop_quest_realhand`
-blueprints). Point the Quest streamer app on the headset at this host's IP.
-The receiver listens on `https://0.0.0.0:8443` by default (you'll see it in
-the startup logs).
+The example starts the Quest receiver for you via the
+`teleop_quest_xarm7` / `teleop_quest_realhand` blueprints — it listens on
+`https://0.0.0.0:8443` (you'll see the URL in the startup logs). Point the
+Quest streamer app on the headset at this host's IP.
 
 ---
 
