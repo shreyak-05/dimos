@@ -123,17 +123,44 @@ python examples/teleop_xarm7_realhand.py --no-arm
 
 ## VR controls (right controller)
 
-| Input              | Effect                                             |
-| ------------------ | -------------------------------------------------- |
-| Hold **A**         | Engage arm tracking                                |
-| Move controller    | Arm follows via IK                                 |
-| **Trigger** analog | Squeeze to curl all five fingers, release to open  |
-| **Grip**           | Toggle thumb abduction (hand-only blueprint)       |
+All mappings are on the **right** controller by default (`hand="right"` in
+`dimos/control/blueprints/teleop.py`). To use the left controller, change
+`hand="right"` → `hand="left"` in the relevant `TaskConfig` entries.
 
-The trigger/grip are bound to the **right** VR controller by default
-(`hand="right"` in `dimos/control/blueprints/teleop.py`). To drive the hand
-from the **left** controller, change `hand="right"` → `hand="left"` in the
-relevant `TaskConfig` entries.
+### Arm + hand (`teleop_xarm7_realhand.py` default)
+
+| Input                         | Effect                                                           |
+| ----------------------------- | ---------------------------------------------------------------- |
+| Hold **A**                    | Engage arm tracking                                              |
+| Move controller               | Arm follows via IK                                               |
+| **Trigger** (analog)          | Proportional finger curl — squeeze to close, release to open     |
+| **Grip** (press)              | Cycle grasp presets: power → pinch → tripod → power → …          |
+| **B** (press)                 | Reset hand to open, clear latched grasp                          |
+
+> After a grip press, the hand is *latched* into that preset — the trigger
+> stops moving fingers until you press **B** to release back to trigger mode.
+
+### Hand-only (`--no-arm`, blueprint `coordinator_realhand`)
+
+This blueprint strips grasp presets so every input is a fine-grained hand
+primitive. Great for bench-testing the RealHand alone.
+
+| Input                         | Effect                                                           |
+| ----------------------------- | ---------------------------------------------------------------- |
+| **Trigger** (analog)          | Proportional curl of thumb flex + all four fingers (release = open) |
+| **Grip** (press)              | Step thumb **abduction** through `0 → 0.16 → 0.31 → 0.52 rad → 0 …` (spreads thumb out) |
+| **B** (press)                 | Reset everything: open fingers, abduction back to 0              |
+
+Tuning (set in `dimos/control/blueprints/teleop.py` → `coordinator_realhand`):
+
+- `trigger_max=[1.00, 0.00, 1.20, 1.20, 1.10, 1.00]` — per-joint max curl
+  in CAN order `[thumb_flex, thumb_abd, index, middle, ring, pinky]`. The
+  second entry is 0 because thumb abduction is driven by grip, not trigger.
+- `thumb_abd_angle=0.52` — the max step for the grip-button abduction cycle
+  (hardware limit is 0.58 rad).
+- `grasp_primitives={"open": [...]}` — only "open" is defined, which is why
+  grip toggles abduction instead of cycling grasps. Add more entries here
+  (e.g. `"power": [...]`) to turn grip back into a grasp cycler.
 
 ---
 
