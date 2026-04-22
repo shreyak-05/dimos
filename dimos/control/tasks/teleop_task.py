@@ -80,7 +80,7 @@ class TeleopIKTaskConfig:
     ee_joint_id: int
     priority: int = 10
     timeout: float = 0.5
-    max_joint_delta_deg: float = 5.0  # ~500°/s at 100Hz
+    max_joint_delta_deg: float = 6.0  # ~500°/s at 100Hz
     hand: Literal["left", "right"] | None = None
     gripper_joint: str | None = None
     gripper_open_pos: float = 0.0
@@ -258,6 +258,10 @@ class TeleopIKTask(BaseControlTask):
                 f"TeleopIKTask {self._name}: joint delta exceeds "
                 f"{self._config.max_joint_delta_deg}°, rejecting solution"
             )
+            max_delta_rad = np.radians(self._config.max_joint_delta_deg)
+            joint_deltas = np.abs(q_solution - q_current)
+            max_joint_delta = np.degrees(np.max(joint_deltas))
+            logger.warning(f"\n q_curr: {q_current}, q_sol: {q_solution}, joint_delta: {joint_deltas}, max_joint_delta: {max_joint_delta}°")
             return None
 
         joint_names = list(self._joint_names_list)

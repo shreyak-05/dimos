@@ -93,6 +93,10 @@ class TaskConfig:
     gripper_joint: str | None = None
     gripper_open_pos: float = 0.0
     gripper_closed_pos: float = 0.0
+    # Hand teleop specific
+    grasp_primitives: dict[str, list[float]] | None = None
+    trigger_max: list[float] | None = None
+    thumb_abd_angle: float | None = None
 
 
 class ControlCoordinatorConfig(ModuleConfig):
@@ -324,6 +328,25 @@ class ControlCoordinator(Module[ControlCoordinatorConfig]):
                     gripper_closed_pos=cfg.gripper_closed_pos,
                 ),
             )
+
+        elif task_type == "hand_teleop":
+            from dimos.control.tasks.hand_teleop_task import HandTeleopTask, HandTeleopTaskConfig
+
+            if not cfg.hand:
+                raise ValueError(f"HandTeleopTask '{cfg.name}' requires hand in TaskConfig")
+
+            hand_cfg = HandTeleopTaskConfig(
+                joint_names=cfg.joint_names,
+                hand=cfg.hand,
+                priority=cfg.priority,
+            )
+            if cfg.grasp_primitives is not None:
+                hand_cfg.grasp_primitives = cfg.grasp_primitives
+            if cfg.trigger_max is not None:
+                hand_cfg.trigger_max = cfg.trigger_max
+            if cfg.thumb_abd_angle is not None:
+                hand_cfg.thumb_abd_angle = cfg.thumb_abd_angle
+            return HandTeleopTask(cfg.name, hand_cfg)
 
         else:
             raise ValueError(f"Unknown task type: {task_type}")
@@ -676,9 +699,9 @@ class ControlCoordinator(Module[ControlCoordinatorConfig]):
                     "Use task_invoke RPC or set transport via blueprint."
                 )
 
-        # Subscribe to buttons if any teleop_ik tasks configured (engage/disengage)
-        has_teleop_ik = any(t.type == "teleop_ik" for t in self.config.tasks)
-        if has_teleop_ik:
+        # Subscribe to buttons if any teleop_ik or hand_teleop tasks configured
+        has_button_tasks = any(t.type in ("teleop_ik", "hand_teleop") for t in self.config.tasks)
+        if has_button_tasks:
             self._buttons_unsub = self.buttons.subscribe(self._on_buttons)
             logger.info("Subscribed to buttons for engage/disengage")
 

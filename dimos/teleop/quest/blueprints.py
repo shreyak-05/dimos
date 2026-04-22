@@ -16,9 +16,11 @@
 """Teleop blueprints for testing and deployment."""
 
 from dimos.control.blueprints.teleop import (
+    coordinator_realhand,
     coordinator_teleop_dual,
     coordinator_teleop_piper,
     coordinator_teleop_xarm7,
+    coordinator_teleop_xarm7_realhand,
 )
 from dimos.core.blueprints import autoconnect
 from dimos.core.transport import LCMTransport
@@ -85,9 +87,36 @@ teleop_quest_dual = autoconnect(
 )
 
 
+# XArm7 + RealHand L6 teleop: right controller -> xarm7 arm + hand
+teleop_quest_xarm7_realhand = autoconnect(
+    ArmTeleopModule.blueprint(task_names={"right": "teleop_xarm"}),
+    coordinator_teleop_xarm7_realhand,
+).transports(
+    {
+        ("right_controller_output", PoseStamped): LCMTransport(
+            "/coordinator/cartesian_command", PoseStamped
+        ),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+
+# RealHand L6 only: Quest server + hand coordinator (no arm)
+teleop_quest_realhand = autoconnect(
+    ArmTeleopModule.blueprint(),
+    coordinator_realhand,
+).transports(
+    {
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+
 __all__ = [
     "teleop_quest_dual",
     "teleop_quest_piper",
+    "teleop_quest_realhand",
     "teleop_quest_rerun",
     "teleop_quest_xarm7",
+    "teleop_quest_xarm7_realhand",
 ]

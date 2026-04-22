@@ -83,6 +83,17 @@ def piper(hw_id: str = "arm") -> HardwareComponent:
     )
 
 
+def realhand_l6(hw_id: str = "hand", *, address: str = "can0") -> HardwareComponent:
+    """RealHand L6 dexterous hand (6-DOF, CAN bus)."""
+    return HardwareComponent(
+        hardware_id=hw_id,
+        hardware_type=HardwareType.MANIPULATOR,
+        joints=make_joints(hw_id, 6),
+        adapter_type="realhand_l6",
+        address=address,
+    )
+
+
 def mock_twist_base(hw_id: str = "base") -> HardwareComponent:
     """Mock holonomic twist base (3-DOF: vx, vy, wz)."""
     return HardwareComponent(

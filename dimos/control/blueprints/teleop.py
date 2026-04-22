@@ -33,6 +33,7 @@ from dimos.control.blueprints._hardware import (
     XARM7_MODEL_PATH,
     mock_arm,
     piper,
+    realhand_l6,
     xarm6,
     xarm7,
 )
@@ -151,7 +152,7 @@ coordinator_cartesian_ik_piper = ControlCoordinator.blueprint(
 
 # Single XArm7 with TeleopIK
 coordinator_teleop_xarm7 = ControlCoordinator.blueprint(
-    hardware=[xarm7(gripper=True)],
+    hardware=[xarm7(gripper=False)],
     tasks=[
         TaskConfig(
             name="teleop_xarm",
@@ -234,6 +235,66 @@ coordinator_teleop_dual = ControlCoordinator.blueprint(
 )
 
 
+_arm_joints_7 = [f"arm_joint{i + 1}" for i in range(7)]
+_hand_joints_6 = [f"hand_joint{i + 1}" for i in range(6)]
+
+# XArm7 + RealHand L6 (real hardware)
+coordinator_teleop_xarm7_realhand = ControlCoordinator.blueprint(
+    hardware=[xarm7(gripper=False), realhand_l6()],
+    tasks=[
+        TaskConfig(
+            name="teleop_xarm",
+            type="teleop_ik",
+            joint_names=_arm_joints_7,
+            priority=10,
+            model_path=XARM7_MODEL_PATH,
+            ee_joint_id=7,
+            hand="right",
+        ),
+        TaskConfig(
+            name="teleop_hand",
+            type="hand_teleop",
+            joint_names=_hand_joints_6,
+            hand="right",
+            priority=9,
+        ),
+    ],
+).transports(
+    {
+        ("joint_state", JointState): LCMTransport("/coordinator/joint_state", JointState),
+        ("cartesian_command", PoseStamped): LCMTransport(
+            "/coordinator/cartesian_command", PoseStamped
+        ),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+
+# RealHand L6 only — trigger curls all 5 fingers, grip toggles thumb abduction.
+# Only "open" in grasp_primitives → grip toggles abduction instead of cycling grasps.
+# Limits from linkerbot-py SDK: thumb_flex max 1.30, thumb_abd max 0.58.
+coordinator_realhand = ControlCoordinator.blueprint(
+    hardware=[realhand_l6()],
+    tasks=[
+        TaskConfig(
+            name="teleop_hand",
+            type="hand_teleop",
+            joint_names=_hand_joints_6,
+            hand="right",
+            priority=9,
+            grasp_primitives={"open": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
+            trigger_max=[1.00, 0.00, 1.20, 1.20, 1.10, 1.00],
+            thumb_abd_angle=0.52,
+        ),
+    ],
+).transports(
+    {
+        ("joint_state", JointState): LCMTransport("/coordinator/hand_joint_state", JointState),
+        ("buttons", Buttons): LCMTransport("/teleop/buttons", Buttons),
+    }
+)
+
+
 __all__ = [
     # Cartesian IK
     "coordinator_cartesian_ik_mock",
@@ -241,9 +302,12 @@ __all__ = [
     "coordinator_combined_xarm6",
     "coordinator_teleop_dual",
     "coordinator_teleop_piper",
+    # Hand only
+    "coordinator_realhand",
     # Servo / Velocity
     "coordinator_teleop_xarm6",
     # TeleopIK
     "coordinator_teleop_xarm7",
+    "coordinator_teleop_xarm7_realhand",
     "coordinator_velocity_xarm6",
 ]
