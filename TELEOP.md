@@ -93,9 +93,34 @@ export REALHAND_SIDE=left   # or "right"
 
 ## 6. Meta Quest
 
-The example starts the Quest receiver for you via the `teleop_quest_realhand`
-blueprint — it listens on `https://0.0.0.0:8443` (you'll see the URL in the
-startup logs). Point the Quest streamer app on the headset at this host's IP.
+No Quest app to install — the teleop uses **WebXR in the Quest's built-in
+browser**. When you start the example, it runs an HTTPS WebSocket server on
+this host at port `8443` that the headset connects to.
+
+1. **Same network.** Put the Quest headset on the same Wi-Fi as this host.
+2. **Find this host's IP** (the machine you're running the Python script on):
+
+   ```bash
+   hostname -I | awk '{print $1}'     # e.g. 192.168.1.42
+   ```
+
+3. **On the Quest**, open the **Browser** app and go to:
+
+   ```
+   https://<host-ip>:8443/teleop
+   ```
+
+   (The server will show this URL in its startup logs too — look for
+   `Quest teleop web server started on https://0.0.0.0:8443` — replace
+   `0.0.0.0` with the IP from step 2.)
+
+4. **Accept the self-signed TLS cert.** The page will warn about the
+   certificate; tap **Advanced → Proceed to &lt;ip&gt; (unsafe)**. Safe on a
+   LAN, not for public networks.
+
+5. Tap **Connect** on the page, then **Enter VR**. You should see the
+   controller inputs flowing in the terminal logs once you move the right
+   controller or press a button.
 
 ---
 
